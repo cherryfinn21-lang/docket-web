@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Docket</title>
+<title>Docket — CV tailoring that tells the truth</title>
 <style>
   :root {
     --paper: #F6F3EC; --panel: #FFFFFF; --ink: #201F1B; --ink-muted: #6E6656;
@@ -13,7 +13,9 @@
   * { box-sizing: border-box; }
   body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; }
   h1,h2,h3 { font-family: Georgia, serif; }
+  a { color: var(--navy); }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+  .wide { max-width: 900px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; margin-bottom: 18px; }
   input, textarea { width: 100%; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 10px; }
   textarea { min-height: 140px; resize: vertical; }
@@ -29,21 +31,83 @@
   .error { background: var(--rust-bg); color: var(--rust); border-radius: 4px; padding: 10px 12px; font-size: 13px; margin-bottom: 10px; }
   .hidden { display: none !important; }
   ul.bullets { margin: 6px 0; padding-left: 18px; font-size: 13.5px; }
-  nav { display:flex; justify-content:space-between; align-items:center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  nav { display:flex; justify-content:space-between; align-items:center; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top:0; background: var(--paper); z-index: 5;}
   .logo { font-family: Georgia, serif; font-weight:bold; font-size: 20px; }
+  .navlinks { display:flex; gap: 16px; align-items:center; font-size: 14px; }
+  .navlinks a { text-decoration: none; color: var(--ink); cursor: pointer; }
+  .hero { text-align:center; padding: 70px 0 50px; }
+  .hero h1 { font-size: 36px; margin: 0 0 12px; line-height:1.2; }
+  .hero p { font-size: 16px; color: var(--ink-muted); max-width: 540px; margin: 0 auto 26px; }
+  .steps { display:grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-bottom: 16px; }
+  @media (max-width: 700px) { .steps, .pricing-grid { grid-template-columns: 1fr; } }
+  .step { background: var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px; }
+  .step .num { font-family: Georgia, serif; font-size: 22px; color: var(--navy); }
+  .pricing-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:18px; }
+  .plan { background: var(--panel); border:1px solid var(--line); border-radius:6px; padding:22px; text-align:center; }
+  .plan.featured { border-color: var(--navy); border-width:2px; }
+  .plan .price { font-family: Georgia, serif; font-size:28px; margin:8px 0; }
+  .plan ul { list-style:none; padding:0; font-size:13px; color:var(--ink-muted); text-align:left; margin:14px 0; }
+  .plan ul li:before { content:"✓ "; color: var(--green); }
+  section.pub { padding: 40px 0; border-bottom: 1px solid var(--line); }
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo">🗂️ Docket</div>
-  <div id="navRight" class="row" style="gap:14px"></div>
+  <div class="logo" style="cursor:pointer" onclick="showLanding()">🗂️ Docket</div>
+  <div id="navRight" class="navlinks"></div>
 </nav>
+
+<!-- LANDING (public, no login needed) -->
+<div id="landingView" class="wrap wide hidden">
+  <section class="hero">
+    <h1>Tailor your CV to every job.<br>Without inventing a single fact.</h1>
+    <p>Docket searches multiple job APIs, ranks every listing against your real CV, then rewrites it honestly for the ones worth applying to — plus tells you what would genuinely strengthen your chances next time.</p>
+    <span class="btn" onclick="showAuthView('signup', null)">Start free — 3 credits, no card needed</span>
+  </section>
+
+  <section class="pub">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><h3 style="font-size:16px">Analyse your CV</h3><p class="muted">Turned into structured data, once.</p></div>
+      <div class="step"><div class="num">2-3</div><h3 style="font-size:16px">Search &amp; discover</h3><p class="muted">Multiple job-board APIs, one keyword.</p></div>
+      <div class="step"><div class="num">4</div><h3 style="font-size:16px">Rank out of 100</h3><p class="muted">How well your real CV fits each one.</p></div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">5</div><h3 style="font-size:16px">Tailor, honestly</h3><p class="muted">Reordered and reworded around real facts only — never invented.</p></div>
+      <div class="step"><div class="num">6</div><h3 style="font-size:16px">Get development tips</h3><p class="muted">Specific ways to close real gaps for next time.</p></div>
+      <div class="step"><div class="num">✓</div><h3 style="font-size:16px">You approve, always</h3><p class="muted">Nothing gets submitted anywhere automatically.</p></div>
+    </div>
+  </section>
+
+  <section class="pub" style="border-bottom:none">
+    <h2>Pricing</h2>
+    <div class="pricing-grid">
+      <div class="plan">
+        <h3>Free</h3><div class="price">£0</div>
+        <ul><li>3 credits to try everything</li><li>Manual job ranking</li></ul>
+        <span class="btn ghost" onclick="showAuthView('signup', null)">Start free</span>
+      </div>
+      <div class="plan featured">
+        <h3>Pro</h3><div class="price">£9<span style="font-size:13px">/mo</span></div>
+        <ul><li>Unlimited tailoring</li><li>Automatic job discovery</li><li>Full dashboard</li></ul>
+        <span class="btn" onclick="showAuthView('signup', 'subscription')">Subscribe</span>
+      </div>
+      <div class="plan">
+        <h3>Credits</h3><div class="price">£5<span style="font-size:13px"> / 20</span></div>
+        <ul><li>Pay as you go</li><li>Never expire</li></ul>
+        <span class="btn ghost" onclick="showAuthView('signup', 'credits_20')">Buy credits</span>
+      </div>
+    </div>
+    <p class="muted" style="text-align:center;margin-top:14px">We never invent experience you don't have — on any plan.</p>
+  </section>
+</div>
 
 <div class="wrap">
 
   <!-- AUTH -->
   <div id="authView" class="card hidden">
+    <span class="muted" style="cursor:pointer" onclick="showLanding()">&larr; Back</span>
     <h2 id="authTitle">Log in</h2>
     <div id="authError" class="error hidden"></div>
     <label>Email</label>
@@ -98,9 +162,10 @@
 </div>
 
 <script>
-const API = ""; // same origin — frontend is served by the same FastAPI app
+const API = ""; // same origin
 let token = localStorage.getItem("docket_token") || null;
 let authMode = "login";
+let pendingPlan = null; // set when someone clicks a paid plan before signing up
 let currentCvId = localStorage.getItem("docket_cv_id") || null;
 let pollTimer = null;
 
@@ -118,10 +183,32 @@ async function api(path, opts={}) {
   return data;
 }
 
+function hideAll() {
+  document.getElementById("landingView").classList.add("hidden");
+  document.getElementById("authView").classList.add("hidden");
+  document.getElementById("appView").classList.add("hidden");
+}
+
+function showLanding() {
+  hideAll();
+  document.getElementById("landingView").classList.remove("hidden");
+  document.getElementById("navRight").innerHTML = token
+    ? `<a onclick="showApp()">Open app</a>`
+    : `<a onclick="showAuthView('login', null)">Log in</a><span class="btn" onclick="showAuthView('signup', null)">Start free</span>`;
+}
+
+function showAuthView(mode, plan) {
+  hideAll();
+  authMode = mode;
+  pendingPlan = plan;
+  document.getElementById("authView").classList.remove("hidden");
+  document.getElementById("authTitle").textContent = mode === "login" ? "Log in" : "Sign up";
+  document.getElementById("authSubmit").textContent = mode === "login" ? "Log in" : "Sign up";
+  document.getElementById("authError").classList.add("hidden");
+}
+
 function toggleAuthMode() {
-  authMode = authMode === "login" ? "signup" : "login";
-  document.getElementById("authTitle").textContent = authMode === "login" ? "Log in" : "Sign up";
-  document.getElementById("authSubmit").textContent = authMode === "login" ? "Log in" : "Sign up";
+  showAuthView(authMode === "login" ? "signup" : "login", pendingPlan);
 }
 
 async function submitAuth() {
@@ -133,7 +220,24 @@ async function submitAuth() {
     const data = await api("/" + authMode, { method: "POST", body: JSON.stringify({ email, password }) });
     token = data.access_token;
     localStorage.setItem("docket_token", token);
-    showApp();
+
+    if (pendingPlan) {
+      try {
+        const co = await api("/billing/checkout", {
+          method: "POST",
+          body: JSON.stringify({
+            plan: pendingPlan,
+            success_url: window.location.origin + "/",
+            cancel_url: window.location.origin + "/",
+          }),
+        });
+        window.location.href = co.checkout_url;
+        return;
+      } catch (e) {
+        alert("You're signed up! Billing isn't fully set up yet, so we couldn't start checkout — but your free credits are ready to use.");
+      }
+    }
+    await showApp();
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove("hidden");
@@ -145,31 +249,28 @@ function logout() {
   currentCvId = null;
   localStorage.removeItem("docket_token");
   localStorage.removeItem("docket_cv_id");
-  showAuth();
-}
-
-function showAuth() {
-  document.getElementById("authView").classList.remove("hidden");
-  document.getElementById("appView").classList.add("hidden");
-  document.getElementById("navRight").innerHTML = "";
+  showLanding();
 }
 
 async function showApp() {
-  document.getElementById("authView").classList.add("hidden");
+  hideAll();
   document.getElementById("appView").classList.remove("hidden");
-  await refreshMe();
+  try {
+    await refreshMe();
+  } catch (e) {
+    showLanding();
+    return;
+  }
   if (currentCvId) document.getElementById("cvStatus").textContent = "CV #" + currentCvId + " ready.";
   await refreshJobs();
   await refreshApplications();
 }
 
 async function refreshMe() {
-  try {
-    const me = await api("/me");
-    document.getElementById("creditsLabel").textContent =
-      me.subscription_active ? "Pro plan — unlimited" : me.credits + " credits";
-    document.getElementById("navRight").innerHTML = `<span class="muted">${me.email}</span>`;
-  } catch (e) { logout(); }
+  const me = await api("/me");
+  document.getElementById("creditsLabel").textContent =
+    me.subscription_active ? "Pro plan — unlimited" : me.credits + " credits";
+  document.getElementById("navRight").innerHTML = `<span class="muted">${me.email}</span>`;
 }
 
 async function submitCV() {
@@ -270,7 +371,11 @@ async function refreshApplications() {
 }
 
 (async function init() {
-  if (token) { await showApp(); } else { showAuth(); }
+  if (token) {
+    try { await showApp(); } catch (e) { showLanding(); }
+  } else {
+    showLanding();
+  }
 })();
 </script>
 </body>
