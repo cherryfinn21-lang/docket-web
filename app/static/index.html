@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docket</title>
+<style>
+  :root {
+    --paper: #F6F3EC; --panel: #FFFFFF; --ink: #201F1B; --ink-muted: #6E6656;
+    --navy: #2B3A55; --rust: #AC4E2C; --rust-bg: #F6E9E2;
+    --green: #3F6B4C; --green-bg: #EAF0EA; --line: #DED6C4;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  h1,h2,h3 { font-family: Georgia, serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; margin-bottom: 18px; }
+  input, textarea { width: 100%; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 10px; }
+  textarea { min-height: 140px; resize: vertical; }
+  label { font-size: 13px; font-weight: 600; display:block; margin-bottom: 4px; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border-radius:4px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid transparent; background:var(--navy); color:#fff; }
+  .btn.ghost { background:transparent; border-color: var(--line); color: var(--ink); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap: 10px; flex-wrap: wrap; }
+  .pill { font-size:12px; padding:3px 10px; border-radius:20px; background:var(--green-bg); color:var(--green); font-weight:600; }
+  .muted { color: var(--ink-muted); font-size: 13px; }
+  .job { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .job:last-child { border-bottom: none; }
+  .error { background: var(--rust-bg); color: var(--rust); border-radius: 4px; padding: 10px 12px; font-size: 13px; margin-bottom: 10px; }
+  .hidden { display: none !important; }
+  ul.bullets { margin: 6px 0; padding-left: 18px; font-size: 13.5px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .logo { font-family: Georgia, serif; font-weight:bold; font-size: 20px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">🗂️ Docket</div>
+  <div id="navRight" class="row" style="gap:14px"></div>
+</nav>
+
+<div class="wrap">
+
+  <!-- AUTH -->
+  <div id="authView" class="card hidden">
+    <h2 id="authTitle">Log in</h2>
+    <div id="authError" class="error hidden"></div>
+    <label>Email</label>
+    <input type="email" id="authEmail">
+    <label>Password</label>
+    <input type="password" id="authPassword">
+    <div class="row">
+      <span class="btn" id="authSubmit" onclick="submitAuth()">Log in</span>
+      <span class="muted" style="cursor:pointer;text-decoration:underline" onclick="toggleAuthMode()">Need an account? Sign up</span>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="appView" class="hidden">
+
+    <div class="card row">
+      <div>
+        <strong id="creditsLabel">-- credits</strong>
+        <div class="muted">Free actions: parsing a CV, ranking, and tailoring each cost credits — see pricing in your plan.</div>
+      </div>
+      <span class="btn ghost" onclick="logout()">Log out</span>
+    </div>
+
+    <!-- Step 1: CV -->
+    <div class="card">
+      <h3>1. Your CV</h3>
+      <div id="cvStatus" class="muted">No CV uploaded yet.</div>
+      <textarea id="cvInput" placeholder="Paste your CV as plain text..."></textarea>
+      <span class="btn" id="cvSubmit" onclick="submitCV()">Parse my CV</span>
+    </div>
+
+    <!-- Steps 2-4: discover -->
+    <div class="card">
+      <h3>2-4. Find and rank jobs</h3>
+      <label>Keyword (e.g. "graduate financial analyst")</label>
+      <input id="query" placeholder="graduate financial analyst">
+      <label>Country codes, comma-separated (e.g. gb,de,nl)</label>
+      <input id="countries" value="gb">
+      <span class="btn" id="discoverBtn" onclick="startDiscover()">Search &amp; rank jobs</span>
+      <span id="discoverStatus" class="muted" style="margin-left:8px"></span>
+
+      <div id="jobsList" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Step 5-6: tailored applications -->
+    <div class="card">
+      <h3>Your tailored applications</h3>
+      <div id="applicationsList" class="muted">None yet — tailor a job above to see it here.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = ""; // same origin — frontend is served by the same FastAPI app
+let token = localStorage.getItem("docket_token") || null;
+let authMode = "login";
+let currentCvId = localStorage.getItem("docket_cv_id") || null;
+let pollTimer = null;
+
+function headers(json=true) {
+  const h = {};
+  if (json) h["Content-Type"] = "application/json";
+  if (token) h["Authorization"] = "Bearer " + token;
+  return h;
+}
+
+async function api(path, opts={}) {
+  const res = await fetch(API + path, { ...opts, headers: headers(!!opts.body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || "Something went wrong");
+  return data;
+}
+
+function toggleAuthMode() {
+  authMode = authMode === "login" ? "signup" : "login";
+  document.getElementById("authTitle").textContent = authMode === "login" ? "Log in" : "Sign up";
+  document.getElementById("authSubmit").textContent = authMode === "login" ? "Log in" : "Sign up";
+}
+
+async function submitAuth() {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const errEl = document.getElementById("authError");
+  errEl.classList.add("hidden");
+  try {
+    const data = await api("/" + authMode, { method: "POST", body: JSON.stringify({ email, password }) });
+    token = data.access_token;
+    localStorage.setItem("docket_token", token);
+    showApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove("hidden");
+  }
+}
+
+function logout() {
+  token = null;
+  currentCvId = null;
+  localStorage.removeItem("docket_token");
+  localStorage.removeItem("docket_cv_id");
+  showAuth();
+}
+
+function showAuth() {
+  document.getElementById("authView").classList.remove("hidden");
+  document.getElementById("appView").classList.add("hidden");
+  document.getElementById("navRight").innerHTML = "";
+}
+
+async function showApp() {
+  document.getElementById("authView").classList.add("hidden");
+  document.getElementById("appView").classList.remove("hidden");
+  await refreshMe();
+  if (currentCvId) document.getElementById("cvStatus").textContent = "CV #" + currentCvId + " ready.";
+  await refreshJobs();
+  await refreshApplications();
+}
+
+async function refreshMe() {
+  try {
+    const me = await api("/me");
+    document.getElementById("creditsLabel").textContent =
+      me.subscription_active ? "Pro plan — unlimited" : me.credits + " credits";
+    document.getElementById("navRight").innerHTML = `<span class="muted">${me.email}</span>`;
+  } catch (e) { logout(); }
+}
+
+async function submitCV() {
+  const raw = document.getElementById("cvInput").value.trim();
+  if (!raw) return;
+  const btn = document.getElementById("cvSubmit");
+  btn.disabled = true; btn.textContent = "Parsing...";
+  try {
+    const data = await api("/cv", { method: "POST", body: JSON.stringify({ raw_text: raw }) });
+    currentCvId = data.cv_id;
+    localStorage.setItem("docket_cv_id", currentCvId);
+    document.getElementById("cvStatus").textContent = "CV #" + currentCvId + " ready.";
+    await refreshMe();
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "Parse my CV";
+  }
+}
+
+async function startDiscover() {
+  if (!currentCvId) { alert("Parse your CV first."); return; }
+  const query = document.getElementById("query").value.trim();
+  const countries = document.getElementById("countries").value.split(",").map(s => s.trim()).filter(Boolean);
+  if (!query) return;
+
+  const btn = document.getElementById("discoverBtn");
+  btn.disabled = true;
+  document.getElementById("discoverStatus").textContent = "Starting...";
+  try {
+    const data = await api("/discover", {
+      method: "POST",
+      body: JSON.stringify({ cv_id: currentCvId, query, countries, sources: ["adzuna", "reed", "arbeitnow"] }),
+    });
+    pollDiscovery(data.run_id);
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+  }
+}
+
+function pollDiscovery(runId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const status = await api("/discover/" + runId);
+      document.getElementById("discoverStatus").textContent =
+        status.status === "running"
+          ? `Searching... ${status.jobs_scored}/${status.jobs_found || "?"} scored`
+          : status.status === "done" ? "Done!" : "Failed: " + status.error;
+      if (status.status !== "running") {
+        clearInterval(pollTimer);
+        document.getElementById("discoverBtn").disabled = false;
+        await refreshJobs();
+        await refreshMe();
+      }
+    } catch (e) { clearInterval(pollTimer); }
+  }, 2500);
+}
+
+async function refreshJobs() {
+  if (!currentCvId) return;
+  try {
+    const jobs = await api("/jobs?min_score=0");
+    const el = document.getElementById("jobsList");
+    if (!jobs.length) { el.innerHTML = ""; return; }
+    el.innerHTML = jobs.map(j => `
+      <div class="job">
+        <div class="row">
+          <strong>${j.title} — ${j.company}</strong>
+          <span class="pill">${j.score}/100</span>
+        </div>
+        <div class="muted">${j.location || ""} · ${j.source}${j.reason ? " — " + j.reason : ""}</div>
+        <span class="btn ghost" style="margin-top:6px;font-size:12.5px;padding:5px 10px" onclick="tailorJob(${j.id})">Tailor my CV to this</span>
+      </div>
+    `).join("");
+  } catch (e) {}
+}
+
+async function tailorJob(jobId) {
+  try {
+    await api("/tailor", { method: "POST", body: JSON.stringify({ cv_id: currentCvId, job_id: jobId }) });
+    await refreshApplications();
+    await refreshMe();
+    alert("Tailored! Scroll down to see it.");
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function refreshApplications() {
+  try {
+    const apps = await api("/applications");
+    const el = document.getElementById("applicationsList");
+    if (!apps.length) { el.innerHTML = '<span class="muted">None yet — tailor a job above to see it here.</span>'; return; }
+    el.innerHTML = apps.map(a => `<div class="job"><strong>${a.job_title} — ${a.company}</strong><div class="muted">${new Date(a.created_at).toLocaleString()}</div></div>`).join("");
+  } catch (e) {}
+}
+
+(async function init() {
+  if (token) { await showApp(); } else { showAuth(); }
+})();
+</script>
+</body>
+</html>
